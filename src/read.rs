@@ -1,5 +1,5 @@
 use crate::{
-    graph::{Edge, EdgeAsInt},
+    edge::{Edge, EdgeAsInt},
     timer::Timer,
 };
 use core::slice::memchr;

@@ -6,6 +6,7 @@ use std::{env, process::exit};
 
 use read::to_sorted_edges;
 
+mod edge;
 mod graph;
 mod read;
 mod timer;

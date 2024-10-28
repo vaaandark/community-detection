@@ -4,6 +4,7 @@
 
 use std::{env, process::exit};
 
+use graph::Graph;
 use read::to_sorted_edges;
 
 mod edge;
@@ -20,5 +21,6 @@ fn main() {
     let filename = &args[1];
 
     let edges = to_sorted_edges(filename);
-    println!("edge size: {}", edges.len());
+    let graph = Graph::from_edges(&edges);
+    println!("Graph size: {}", graph.communities.len());
 }

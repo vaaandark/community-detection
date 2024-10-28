@@ -6,7 +6,7 @@ use core::slice::memchr;
 use std::{fs::File, sync::Mutex};
 use voracious_radix_sort::RadixSort;
 
-const CHAR_PER_LINE: usize = 20;
+const CHARS_PER_LINE: usize = 20;
 
 pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     let _timer = Timer::with_label("reading file");
@@ -20,7 +20,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     let mut splitting_positions = Vec::with_capacity(nthreads + 1);
 
     {
-        let _timer = Timer::with_label("split into slices");
+        let _timer = Timer::with_label("splitting file into slices");
         splitting_positions.push(0);
         for i in 1..nthreads {
             let begin = file_size / nthreads * i;
@@ -31,7 +31,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     }
 
     fn read_slice(slice: &[u8]) -> Vec<EdgeAsInt> {
-        let mut result = Vec::with_capacity(slice.len() / CHAR_PER_LINE);
+        let mut result = Vec::with_capacity(slice.len() / CHARS_PER_LINE);
         let extend = slice
             .split(|&x| x == b'\n')
             .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
@@ -54,7 +54,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     let result = Mutex::new(Vec::new());
     let edge_slices = {
         rayon::scope(|s| {
-            let _timer = Timer::with_label("parallel parsing file and building graphs");
+            let _timer = Timer::with_label("parallel parsing file");
             for i in 0..nthreads {
                 let start = splitting_positions[i];
                 let end = splitting_positions[i + 1];
@@ -72,7 +72,10 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
         let _timer = Timer::with_label("merging vertices");
         let total_len = edge_slices.iter().map(Vec::len).sum::<usize>();
         let mut result = Vec::with_capacity(total_len);
-        unsafe { result.set_len(total_len) };
+        #[allow(clippy::uninit_vec)]
+        unsafe {
+            result.set_len(total_len)
+        };
         let mut buf = &mut result[..];
         rayon::scope(|s| {
             for item in edge_slices.into_iter() {
@@ -84,12 +87,10 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
         result
     };
 
-    let edges = {
+    {
         let _timer = Timer::with_label("sorting");
         let mut result = edges;
         result.voracious_mt_sort(rayon::current_num_threads());
         result
-    };
-
-    edges
+    }
 }

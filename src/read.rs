@@ -20,7 +20,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     let mut splitting_positions = Vec::with_capacity(nthreads + 1);
 
     {
-        let _timer = Timer::with_label("splitting file into slices");
+        // let _timer = Timer::with_label("splitting file into slices");
         splitting_positions.push(0);
         for i in 1..nthreads {
             let begin = file_size / nthreads * i;
@@ -54,7 +54,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     let result = Mutex::new(Vec::new());
     let edge_slices = {
         rayon::scope(|s| {
-            let _timer = Timer::with_label("parallel parsing file");
+            // let _timer = Timer::with_label("parallel parsing file");
             for i in 0..nthreads {
                 let start = splitting_positions[i];
                 let end = splitting_positions[i + 1];
@@ -69,7 +69,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     };
 
     let edges = {
-        let _timer = Timer::with_label("merging vertices");
+        // let _timer = Timer::with_label("merging vertices");
         let total_len = edge_slices.iter().map(Vec::len).sum::<usize>();
         let mut result = Vec::with_capacity(total_len);
         #[allow(clippy::uninit_vec)]
@@ -88,7 +88,7 @@ pub fn to_sorted_edges(filename: &str) -> Vec<u64> {
     };
 
     {
-        let _timer = Timer::with_label("sorting");
+        // let _timer = Timer::with_label("sorting");
         let mut result = edges;
         result.voracious_mt_sort(rayon::current_num_threads());
         result

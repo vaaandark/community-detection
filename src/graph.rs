@@ -11,9 +11,8 @@ const DEGREES_PER_VERTEX: usize = 4;
 #[derive(Debug, Clone, Default)]
 pub struct Vertex {
     pub id: u32,
+    pub community: u32,
     pub neighbors: HashMap<u32, u32>,
-    // if it's none, the shortest path haven't been calculated yet
-    shortest_path_len: Option<HashMap<u32, usize>>,
 }
 
 impl Vertex {
@@ -21,13 +20,13 @@ impl Vertex {
     pub fn new(id: u32) -> Self {
         Self {
             id,
+            community: id,
             ..Default::default()
         }
     }
 
     #[allow(unused)]
     pub fn add_neighbor(&mut self, neighbor: u32, weight: u32) {
-        self.shortest_path_len = None;
         self.neighbors.insert(neighbor, weight);
     }
 }

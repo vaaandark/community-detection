@@ -11,7 +11,9 @@ use crate::{
 
 const DEGREES_PER_VERTEX: usize = 20;
 
-const CONVERGENCE_THRESHOLD: f32 = 0.0001;
+const CONVERGENCE_THRESHOLD: f64 = 0.001;
+
+const MAX_INNER_ITERS: usize = 10;
 
 #[allow(unused)]
 #[derive(Debug, Clone, Default)]
@@ -89,12 +91,12 @@ impl Community {
     }
 
     pub fn remove(&mut self, vertex_id: u32, degrees: usize) -> bool {
-        self.degrees += degrees;
+        self.degrees -= degrees;
         self.vertices.remove(&vertex_id)
     }
 
     pub fn insert(&mut self, vertex_id: u32, degrees: usize) -> bool {
-        self.degrees -= degrees;
+        self.degrees += degrees;
         self.vertices.insert(vertex_id)
     }
 
@@ -103,19 +105,20 @@ impl Community {
     }
 
     #[allow(unused)]
-    fn modularity(&self, graph: &Graph) -> f32 {
+    fn modularity(&self, graph: &Graph) -> f64 {
         let mut inner = 0;
-        let mut degrees = 0;
+        let mut outer = 0;
         for vertex in self.vertices(graph) {
             for (neighbor, weight) in &vertex.neighbors {
                 if self.vertices.contains(neighbor) {
                     inner += weight;
+                } else {
+                    outer += weight;
                 }
-                degrees += weight;
             }
         }
-        let ec = inner as f32 / graph.total_degrees as f32;
-        let ac = degrees as f32 / graph.total_degrees as f32;
+        let ec = (inner) as f64 / graph.total_degrees as f64;
+        let ac = (inner + outer) as f64 / graph.total_degrees as f64;
         ec - ac * ac
     }
 
@@ -227,8 +230,9 @@ impl Graph {
                 let edge = Edge::from(edge);
                 let (from, to) = (edge.0, edge.1);
                 let vertex = result.entry(from).or_insert(Vertex::new(from));
-                if vertex.add_neighbor(to, 1).is_none() {
-                    total_degrees += 1;
+                let weight = if from == to { 2 } else { 1 };
+                if vertex.add_neighbor(to, weight).is_none() {
+                    total_degrees += weight;
                 }
             }
             (total_degrees, result)
@@ -280,7 +284,7 @@ impl Graph {
     }
 
     #[allow(unused)]
-    pub fn modularity(&self) -> f32 {
+    pub fn modularity(&self) -> f64 {
         self.communities().map(|c| c.modularity(self)).sum()
     }
 
@@ -306,7 +310,7 @@ impl Graph {
         }
     }
 
-    fn modularity_gain(&self, vertex: &Vertex, neighbor_vertex_id: u32) -> Option<(f32, u32)> {
+    fn modularity_gain(&self, vertex: &Vertex, neighbor_vertex_id: u32) -> Option<(f64, u32)> {
         let neighbor_community_id = self.vertex(neighbor_vertex_id).unwrap().community;
         if vertex.community == neighbor_community_id {
             return None;
@@ -326,8 +330,8 @@ impl Graph {
             })
             .sum();
         Some((
-            vertex_to_community_degrees as f32
-                - (community_degrees * vertex_degrees) as f32 / self.total_degrees as f32,
+            vertex_to_community_degrees as f64
+                - (community_degrees * vertex_degrees) as f64 / self.total_degrees as f64,
             neighbor_community_id,
         ))
     }
@@ -370,15 +374,13 @@ impl Graph {
     }
 
     #[allow(unused)]
-    pub fn louvain(&mut self) -> (Graph, f32) {
+    pub fn louvain(&mut self) -> (Graph, f64) {
         let mut last_modularity = self.modularity();
 
-        loop {
+        for i in 0..MAX_INNER_ITERS {
             let total = self.vertices.len();
-            let mut current = 0;
-            for vertex in self.vertices() {
-                current += 1;
-                print!("\r{}/{}", current, total);
+            for (current, vertex) in self.vertices().enumerate() {
+                print!("\r{}/{}", current+1, total);
                 std::io::stdout().flush().unwrap();
                 if let Some(merge_to) = self.max_modularity_gain(vertex) {
                     Self::move_vertex_wrapper(self, vertex.id, merge_to);

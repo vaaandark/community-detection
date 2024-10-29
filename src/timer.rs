@@ -18,7 +18,7 @@ impl Drop for Timer {
     fn drop(&mut self) {
         let end = time::Instant::now();
         println!(
-            ">>> {}: {} seconds<<<",
+            ">>> {}: {} seconds <<<",
             self.label,
             (end - self.start).as_secs_f64()
         );

@@ -310,11 +310,7 @@ impl Graph {
         }
     }
 
-    fn modularity_gain(&self, vertex: &Vertex, neighbor_vertex_id: u32) -> Option<(f64, u32)> {
-        let neighbor_community_id = self.vertex(neighbor_vertex_id).unwrap().community;
-        if vertex.community == neighbor_community_id {
-            return None;
-        }
+    fn modularity_gain(&self, vertex: &Vertex, neighbor_community_id: u32) -> Option<f64> {
         let neighbor_community = self.community(neighbor_community_id).unwrap();
         let vertex_degrees: usize = vertex.degrees();
         let community_degrees: usize = neighbor_community.degrees();
@@ -329,28 +325,34 @@ impl Graph {
                 }
             })
             .sum();
-        Some((
+        Some(
             vertex_to_community_degrees as f64
                 - (community_degrees * vertex_degrees) as f64 / self.total_degrees as f64,
-            neighbor_community_id,
-        ))
+        )
     }
 
     fn max_modularity_gain(&self, vertex: &Vertex) -> Option<u32> {
         let mut max_gain = -1.;
-        let mut merge_to = None;
-        for neighbor_vertex_id in vertex.neighbors.keys() {
-            if let Some((modularity_gain, neighbor_community_id)) =
-                self.modularity_gain(vertex, *neighbor_vertex_id)
-            {
+        let mut move_to = None;
+        for &neighbor_vertex_id in vertex.neighbors.keys() {
+            let mut calculated = HashSet::new();
+            let neighbor_community_id = self.vertex(neighbor_vertex_id).unwrap().community;
+            if vertex.community == neighbor_community_id {
+                continue;
+            }
+            if calculated.contains(&neighbor_community_id) {
+                continue;
+            }
+            let _ = calculated.insert(neighbor_community_id);
+            if let Some(modularity_gain) = self.modularity_gain(vertex, neighbor_community_id) {
                 if modularity_gain > max_gain {
                     max_gain = modularity_gain;
-                    merge_to = Some(neighbor_community_id);
+                    move_to = Some(neighbor_community_id);
                 }
             }
         }
         if max_gain > 0.0 {
-            merge_to
+            move_to
         } else {
             None
         }
@@ -380,10 +382,12 @@ impl Graph {
         for i in 0..MAX_INNER_ITERS {
             let total = self.vertices.len();
             for (current, vertex) in self.vertices().enumerate() {
-                print!("\r{}/{}", current+1, total);
+                print!("\r{}/{}", current + 1, total);
                 std::io::stdout().flush().unwrap();
-                if let Some(merge_to) = self.max_modularity_gain(vertex) {
-                    Self::move_vertex_wrapper(self, vertex.id, merge_to);
+                if let Some(move_to) = self.max_modularity_gain(vertex) {
+                    if vertex.community != move_to {
+                    Self::move_vertex_wrapper(self, vertex.id, move_to);
+                    }
                 }
             }
 

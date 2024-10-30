@@ -1,7 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    io::Write,
-    sync::Mutex,
+    collections::{HashMap, HashSet}, io::Write, sync::Mutex
 };
 
 use crate::{
@@ -378,12 +376,15 @@ impl Graph {
     #[allow(unused)]
     pub fn louvain(&mut self) -> (Graph, f64) {
         let mut last_modularity = self.modularity();
+        let show_process = std::env::var("SHOW_PROCESS").ok().map(|s| s.parse::<bool>().unwrap_or(false)).unwrap_or(true);
 
         for i in 0..MAX_INNER_ITERS {
             let total = self.vertices.len();
             for (current, vertex) in self.vertices().enumerate() {
-                print!("\r{}/{}", current + 1, total);
-                std::io::stdout().flush().unwrap();
+                if show_process {
+                    print!("\r{}/{}", current + 1, total);
+                    std::io::stdout().flush().unwrap();
+                }
                 if let Some(move_to) = self.max_modularity_gain(vertex) {
                     if vertex.community != move_to {
                     Self::move_vertex_wrapper(self, vertex.id, move_to);

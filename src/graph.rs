@@ -339,8 +339,8 @@ impl Graph {
     fn max_modularity_gain(&self, vertex: &Vertex) -> Option<u32> {
         let mut max_gain = -1.0;
         let mut move_to = None;
+        let mut calculated = HashSet::new();
         for &neighbor_vertex_id in vertex.neighbors.keys() {
-            let mut calculated = HashSet::new();
             let neighbor_community_id = self.vertex(neighbor_vertex_id).unwrap().community;
             if calculated.contains(&neighbor_community_id) {
                 continue;

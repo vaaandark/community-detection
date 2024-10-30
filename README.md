@@ -1,6 +1,6 @@
 # Community Detection
 
-见任务书
+见实验报告和任务书。
 
 ## 测试与可视化
 

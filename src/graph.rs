@@ -313,8 +313,8 @@ impl Graph {
     fn modularity_gain(&self, vertex: &Vertex, neighbor_community_id: u32) -> Option<f64> {
         let neighbor_community = self.community(neighbor_community_id).unwrap();
         let vertex_degrees: usize = vertex.degrees();
-        let community_degrees: usize = neighbor_community.degrees();
-        let vertex_to_community_degrees: usize = vertex
+        let mut community_degrees: usize = neighbor_community.degrees();
+        let mut vertex_to_community_degrees: usize = vertex
             .neighbors
             .iter()
             .filter_map(|(neighbor, weight)| {
@@ -325,21 +325,25 @@ impl Graph {
                 }
             })
             .sum();
-        Some(
-            vertex_to_community_degrees as f64
-                - (community_degrees * vertex_degrees) as f64 / self.total_degrees as f64,
-        )
+        if vertex.community == neighbor_community_id {
+            community_degrees -= vertex.degrees();
+            vertex_to_community_degrees -= vertex.neighbors.get(&vertex.id).copied().unwrap_or(0);
+        }
+        let gain = vertex_to_community_degrees as f64
+            - (community_degrees * vertex_degrees) as f64 / self.total_degrees as f64;
+        if gain > 0.0 {
+            Some(gain)
+        } else {
+            None
+        }
     }
 
     fn max_modularity_gain(&self, vertex: &Vertex) -> Option<u32> {
-        let mut max_gain = -1.;
+        let mut max_gain = -1.0;
         let mut move_to = None;
         for &neighbor_vertex_id in vertex.neighbors.keys() {
             let mut calculated = HashSet::new();
             let neighbor_community_id = self.vertex(neighbor_vertex_id).unwrap().community;
-            if vertex.community == neighbor_community_id {
-                continue;
-            }
             if calculated.contains(&neighbor_community_id) {
                 continue;
             }
@@ -351,11 +355,7 @@ impl Graph {
                 }
             }
         }
-        if max_gain > 0.0 {
-            move_to
-        } else {
-            None
-        }
+        move_to
     }
 
     fn move_vertex(&mut self, vertex_id: u32, dst_community_id: u32) {
